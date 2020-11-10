@@ -7,10 +7,10 @@
 
 import pygame
 import random
+from pygame import mixer
 
 pygame.init()
-
-screen = pygame.display.set_mode((1280, 720))
+screen = pygame.display.set_mode((1280, 720))  # Create a screen of specified resolution
 
 # Title bar
 pygame.display.set_caption("Space Invaders")
@@ -19,6 +19,8 @@ pygame.display.set_icon(icon)
 
 # Background setup
 bg = pygame.image.load('bg.jpg')
+mixer.music.load('bgloop.wav')
+mixer.music.play(-1)
 
 # Player setup
 PlayerImg = pygame.image.load('Player.png')
@@ -26,12 +28,20 @@ PlayerX = 608
 PlayerY = 582
 PlaUpd = 0
 
-# Alien setup
-AlienImg = pygame.image.load('alien.png')
-AlienX = random.randint(0, 1216)
-AlienY = random.randint(0, 100)
-AlienUpdX = 3
-AlienUpdY = 64
+# Aliens setup
+AlienImg = []
+AlienX = []
+AlienY = []
+AlienUpdX = []
+AlienUpdY = []
+num = 6
+
+for x in range(num):
+    AlienImg.append(pygame.image.load('alien.png'))
+    AlienX.append(random.randint(0, 1216))
+    AlienY.append(random.randint(0, 100))
+    AlienUpdX.append(3)
+    AlienUpdY.append(64)
 
 # Bullet setup
 BulletImg = pygame.image.load('bullet.png')
@@ -41,20 +51,22 @@ BullUpdY = 8
 BulletState = 'ready'  # ready->Bullet is invisible and stationary & fired->Bullet is visible and moving
 
 score = 0
+font = pygame.font.Font('freesansbold.ttf', 40)
+scoreX = 20
+scoreY = 20
 
 
-def player(x, y):
-    screen.blit(PlayerImg, (x, y))
+def player(ax, ay):
+    screen.blit(PlayerImg, (ax, ay))
 
 
-def alien(x, y):
-    screen.blit(AlienImg, (AlienX, AlienY))
+def alien(ax, ay, ai):
+    screen.blit(AlienImg[ai], (ax, ay))
 
 
-def fire_bullet(x, y):
-    global BulletState
+def fire_bullet(bx, by):
     if BulletState == 'fired':
-        screen.blit(BulletImg, (x, y))
+        screen.blit(BulletImg, (bx, by))
 
 
 def detect_collision(ax, ay, bx, by):
@@ -66,10 +78,14 @@ def detect_collision(ax, ay, bx, by):
             return False
 
 
+def drawScore(sx, sy):
+    scorel = font.render("SCORE : " + str(score), True, (255, 0, 0))
+    screen.blit(scorel, (sx, sy))
+
+
 # Game Window loop
 running = True
 while running:
-    screen.fill((0, 0, 128))  # Values in parenthesis are RGB, given combination is for Navy
     screen.blit(bg, (0, 0))
     for event in pygame.event.get():
         # Event handler for clicking the close button
@@ -87,6 +103,8 @@ while running:
                     BulletY = PlayerY - 16
                     BulletX = PlayerX + 56
                     BulletState = 'fired'
+                    fired = mixer.Sound('bullet.wav')
+                    fired.play()
                     fire_bullet(BulletX, BulletY)
         if event.type == pygame.KEYUP:
             PlaUpd = 0
@@ -99,13 +117,25 @@ while running:
     PlayerX += PlaUpd
 
     # Boundary conditions and position update for Alien
-    if AlienX <= 0:
-        AlienUpdX = 3
-        AlienY += AlienUpdY
-    if AlienX >= 1216:
-        AlienUpdX = -3
-        AlienY += AlienUpdY
-    AlienX += AlienUpdX
+    for i in range(num):
+        if AlienX[i] <= 0:
+            AlienUpdX[i] = 3
+            AlienY[i] += AlienUpdY[i]
+        if AlienX[i] >= 1216:
+            AlienUpdX[i] = -3
+            AlienY[i] += AlienUpdY[i]
+        AlienX[i] += AlienUpdX[i]
+
+        # Check for collision between bullet and alien
+        colDet = detect_collision(AlienX[i], AlienY[i], BulletX, BulletY)
+        if colDet:
+            explosion = mixer.Sound('collision.wav')
+            explosion.play()
+            BulletY = PlayerY - 16
+            BulletState = 'ready'
+            score += 1
+            AlienX[i] = random.randint(0, 1216)
+            AlienY[i] = random.randint(0, 100)
 
     # Boundary conditions and position update for bullet
     if BulletY <= 0:
@@ -114,17 +144,9 @@ while running:
     if BulletState == 'fired':
         BulletY -= BullUpdY
 
-    # Check for collision between bullet and alien
-    colDet = detect_collision(AlienX, AlienY, BulletX, BulletY)
-    if colDet:
-        BulletY = PlayerY - 16
-        BulletState = 'ready'
-        score += 1
-        print(score)
-        AlienX = random.randint(0, 1216)
-        AlienY = random.randint(0, 100)
-
     fire_bullet(BulletX, BulletY)
     player(PlayerX, PlayerY)
-    alien(AlienX, AlienY)
+    for i in range(num):
+        alien(AlienX[i], AlienY[i], i)
+    drawScore(scoreX, scoreY)
     pygame.display.update()  # Update the changes to the display
