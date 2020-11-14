@@ -83,6 +83,17 @@ def drawScore(sx, sy):
     screen.blit(scorel, (sx, sy))
 
 
+# Game Over
+GOfont = pygame.font.Font('freesansbold.ttf', 80)
+GOX = 400
+GOY = 300
+
+
+def gameOver():
+    GO = GOfont.render("GAME OVER", True, (255, 0, 0))
+    screen.blit(GO, (GOX, GOY))
+
+
 # Game Window loop
 running = True
 while running:
@@ -116,8 +127,8 @@ while running:
         PlayerX = 1152
     PlayerX += PlaUpd
 
-    # Boundary conditions and position update for Alien
     for i in range(num):
+        # Boundary conditions and position update for Alien
         if AlienX[i] <= 0:
             AlienUpdX[i] = 3
             AlienY[i] += AlienUpdY[i]
@@ -136,6 +147,13 @@ while running:
             score += 1
             AlienX[i] = random.randint(0, 1216)
             AlienY[i] = random.randint(0, 100)
+
+        # Check if any alien has gone below the player
+        if AlienY[i] >= PlayerY:
+            for j in range(num):
+                AlienY[j] = 2000
+            gameOver()
+            break
 
     # Boundary conditions and position update for bullet
     if BulletY <= 0:
