@@ -4,6 +4,7 @@
 # Icons made by <a href="https://www.flaticon.com/authors/smashicons" title="Smashicons">Smashicons</a> from <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a>
 # <a href="https://www.freepik.com/vectors/background">Background vector created by freepik - www.freepik.com</a>
 # Icons made by <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a>
+# All sounds taken from https://freesound.org
 
 import pygame
 import random
@@ -34,14 +35,24 @@ AlienX = []
 AlienY = []
 AlienUpdX = []
 AlienUpdY = []
-num = 6
+num =1
 
-for x in range(num):
+# Score setup
+score = 0
+lastScoreSpeed = 0
+lastScoreAlien = 0
+
+def addAlien():
+    global num, score, lastScoreAlien
     AlienImg.append(pygame.image.load('alien.png'))
     AlienX.append(random.randint(0, 1216))
     AlienY.append(random.randint(0, 100))
     AlienUpdX.append(3)
     AlienUpdY.append(64)
+    num = len(AlienImg)
+    lastScoreAlien = score
+
+addAlien()
 
 # Bullet setup
 BulletImg = pygame.image.load('bullet.png')
@@ -50,7 +61,6 @@ BulletY = PlayerY - 16
 BullUpdY = 8
 BulletState = 'ready'  # ready->Bullet is invisible and stationary & fired->Bullet is visible and moving
 
-score = 0
 font = pygame.font.Font('freesansbold.ttf', 40)
 scoreX = 20
 scoreY = 20
@@ -90,8 +100,28 @@ GOY = 300
 
 
 def gameOver():
+    global num, AlienImg, AlienUpdX, AlienUpdY, AlienX, AlienY, score, lastScoreAlien, lastScoreSpeed
+    for j in range(num):
+                AlienY[j] = 20000
     GO = GOfont.render("GAME OVER", True, (255, 0, 0))
+    restart = font.render("Press SPACE to respawn", True, (255,0,0))
+    screen.blit(restart, (400,500))
     screen.blit(GO, (GOX, GOY))
+    gaov = mixer.Sound('game_over.flac')
+    gaov.play()
+    for event in pygame.event.get():
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+            # Sequence to restart game
+            AlienImg = []
+            AlienX = []
+            AlienY = []
+            AlienUpdX = []
+            AlienUpdY = []
+            num =1
+            score = 0
+            lastScoreSpeed = 0
+            lastScoreAlien = 0
+            addAlien()
 
 
 # Game Window loop
@@ -130,10 +160,10 @@ while running:
     for i in range(num):
         # Boundary conditions and position update for Alien
         if AlienX[i] <= 0:
-            AlienUpdX[i] = 3
+            AlienUpdX[i] *= -1
             AlienY[i] += AlienUpdY[i]
         if AlienX[i] >= 1216:
-            AlienUpdX[i] = -3
+            AlienUpdX[i] *= -1
             AlienY[i] += AlienUpdY[i]
         AlienX[i] += AlienUpdX[i]
 
@@ -150,8 +180,6 @@ while running:
 
         # Check if any alien has gone below the player
         if AlienY[i] >= PlayerY:
-            for j in range(num):
-                AlienY[j] = 2000
             gameOver()
             break
 
@@ -162,9 +190,32 @@ while running:
     if BulletState == 'fired':
         BulletY -= BullUpdY
 
+    #Increase difficulty increasing speed of aliens with score
+    if score%50 == 0 and score!=0 and lastScoreSpeed!=score:
+        for j in range(num):
+            if AlienUpdX[j]>0:
+                AlienUpdX[j] += 1
+            else:
+                AlienUpdX[j] -= 1
+        lastScoreSpeed = score
+
+
     fire_bullet(BulletX, BulletY)
     player(PlayerX, PlayerY)
+
+    # Add an alien if score increased by 100
+    if score%10 == 0 and score!= 0 and lastScoreAlien!=score and num<=10:
+        addAlien()
+    elif score%25 == 0 and score!= 0 and lastScoreAlien!=score and num>10 and num<=15:
+        addAlien()
+        lastScoreAlien = score
+    elif score%50 == 0 and score!= 0 and lastScoreAlien!=score and num>15 and num<=20:
+        addAlien()
+        lastScoreAlien = score
+
     for i in range(num):
         alien(AlienX[i], AlienY[i], i)
     drawScore(scoreX, scoreY)
-    pygame.display.update()  # Update the changes to the display
+    
+    # Update the changes to the display
+    pygame.display.update()  
